@@ -6,39 +6,25 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Scanner;
 
 public class SocketClient {
-
-	public static void main(String[] args) {
-//		String hostName = args[0];
-//		int portNumber = Integer.parseInt(args[1]);
-
-		String hostName = "192.168.56.1";
-		int portNumber = 8082;
-
-		try (Socket socket = new Socket(hostName, portNumber);
-				PrintWriter out = new PrintWriter(socket.getOutputStream(),
-						true);
-				BufferedReader in = new BufferedReader(new InputStreamReader(
-						socket.getInputStream()));) {
-
-			BufferedReader stdIn = new BufferedReader(new InputStreamReader(
-					System.in));
-			String fromServer;
-			String fromUser;
-
-			while (true) {
-				System.out.print("Client: ");
-				if((fromUser = stdIn.readLine()) != null) {
-					out.println(fromUser);
-				
-				if ((fromServer = in.readLine()) != null) {
-					System.out.println("Server: " + fromServer);
-					}
-				//stdIn.readLine();
-				}
-			}
-
+	private Socket socket;
+	private PrintWriter out;
+	private BufferedReader in;
+	private String userName;
+	
+	public SocketClient(){}
+	
+	public void createSocket(String hostName, int portNumber){
+		try { 
+			socket = new Socket(hostName, portNumber);
+			out = new PrintWriter(socket.getOutputStream(),	true);
+			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			
+			createWriteThread();
+			createReadThread();
+			
 		} catch (UnknownHostException e) {
 			System.err.println("Don't know about host " + hostName);
 			System.exit(1);
@@ -47,6 +33,54 @@ public class SocketClient {
 					+ hostName);
 			System.exit(1);
 		}
+	}
+	
+	public void createWriteThread(){
+		Thread writeThread =  new Thread(){
+			public void run(){
+				String fromUser;
+			
+				try(Scanner scanner = new Scanner(System.in);){
+					
+					if(userName == null) {
+						System.out.print("username: ");
+						userName = scanner.next();
+					}
+
+					while (true) {
+						fromUser = scanner.nextLine();
+						out.println(userName + ": " + fromUser);
+					}
+				}
+			}
+		};
+		writeThread.start();
+	}
+	
+	public void createReadThread(){
+		Thread readThread = new Thread(){
+			public void run(){
+				String fromServer;
+				
+				try{
+					while(true) {
+						if((fromServer = in.readLine()) != null){
+							System.out.println(fromServer);
+						}
+					}
+				} catch(IOException e){
+					e.printStackTrace();
+				}
+			}
+		};
+		readThread.start();
+	}
+
+	public static void main(String[] args) {
+		String hostNameArg = args[0];
+		int portNumberArg = Integer.parseInt(args[1]);
+		SocketClient socketClient = new SocketClient();
+		socketClient.createSocket(hostNameArg, portNumberArg);
 	}
 
 }
